@@ -1,0 +1,21 @@
+Cryptography System Performance Benchmark Results
+Generated: Jul  8 2025 06:23:22
+
+Test Name                       Original (ms) Optimized (ms)    Improvement        Percent
+------------------------------------------------------------------------------------------
+ModExp (exp=456)                        0.000          0.000           0.00x            0.0%
+ModExp (exp=1000)                       0.000          0.000           0.00x            0.0%
+ModExp (exp=2000)                       0.000          0.000           0.00x            0.0%
+ModExp (exp=5000)                       0.000          0.000           0.00x            0.0%
+String Concat (n=100)                   0.001          0.001           1.00x            0.0%
+String Concat (n=500)                   0.006          0.003           1.91x           47.6%
+String Concat (n=1000)                  0.006          0.006           1.08x            7.3%
+String Concat (n=5000)                  0.037          0.033           1.14x           12.2%
+Vector Ops (n=1000)                     0.001          0.001           0.62x          -60.7%
+Vector Ops (n=5000)                     0.003          0.002           1.34x           25.2%
+Vector Ops (n=10000)                    0.007          0.005           1.45x           30.9%
+Vector Ops (n=50000)                    0.155          0.028           5.46x           81.7%
+Memory Alloc (n=1000)                   0.014          0.011           1.31x           23.6%
+Memory Alloc (n=10000)                  0.419          0.118           3.56x           71.9%
+Memory Alloc (n=100000)                 4.087          1.288           3.17x           68.5%
+Caesar Cipher (1KB)                     0.005          0.005           0.94x           -6.0%
