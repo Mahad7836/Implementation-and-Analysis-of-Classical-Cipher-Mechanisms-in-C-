@@ -12,6 +12,13 @@ using namespace std;
 // Forward declaration for efficient modular exponentiation (defined later)
 int modularExponentiation(int base, int exp, int mod);
 
+// Global RNG accessor – seeded once, reused everywhere
+static std::mt19937 &globalRng()
+{
+    static std::mt19937 gen(static_cast<unsigned long>(time(nullptr)));
+    return gen;
+}
+
 // Simple symmetric encryption using XOR
 string xorEncrypt(const string &data, char key)
 {
@@ -97,6 +104,10 @@ string railfenceencrypt(string plaintext, int key)
     // Create a vector of strings for each rail
     vector<string> rail(key);
 
+    // Reserve capacity for each rail roughly proportional
+    for (string &r : rail)
+        r.reserve(plaintext.size() / key + 1);
+
     // 1 means moving down, -1 means moving up
     int direction = 1;
     int row = 0;
@@ -115,7 +126,8 @@ string railfenceencrypt(string plaintext, int key)
     }
 
     // Combine all rails into the ciphertext
-    string ciphertext = "";
+    string ciphertext;
+    ciphertext.reserve(plaintext.size());
     for (const string &r : rail)
     {
         ciphertext += r;
@@ -128,55 +140,40 @@ string railfenceencrypt(string plaintext, int key)
 string railfencedecrypt(string ciphertext, int key)
 {
     if (key <= 1)
-        // No decryption for key <= 1
         return ciphertext;
 
-    // Track the number of characters in each rail
+    size_t len = ciphertext.size();
+
+    // First pass: figure out how many chars go in each rail
     vector<int> railLengths(key, 0);
-
-    // 1 means moving down, -1 means moving up
-    int direction = 1;
-    int row = 0;
-
-    // Calculate the length of each rail based on the zigzag pattern
-    for (char ch : ciphertext)
+    int dir = 1, row = 0;
+    for (size_t i = 0; i < len; ++i)
     {
         railLengths[row]++;
-        row += direction;
-
+        row += dir;
         if (row == 0 || row == key - 1)
-        {
-            direction *= -1;
-        }
+            dir *= -1;
     }
 
-    // Fill the rails with characters from the ciphertext
-    vector<string> rail(key);
-    int index = 0;
-    for (int i = 0; i < key; i++)
-    {
-        rail[i] = ciphertext.substr(index, railLengths[i]);
-        index += railLengths[i];
-    }
+    // Calculate starting index of each rail in ciphertext
+    vector<int> railStart(key, 0);
+    for (int i = 1; i < key; ++i)
+        railStart[i] = railStart[i - 1] + railLengths[i - 1];
 
-    // Reconstruct the plaintext by following the zigzag pattern
-    string plaintext = "";
+    // Current position within each rail while reading
+    vector<int> curPos = railStart;
+
+    string plaintext;
+    plaintext.reserve(len);
+
+    dir = 1;
     row = 0;
-    direction = 1;
-
-    for (size_t i = 0; i < ciphertext.length(); i++)
+    for (size_t i = 0; i < len; ++i)
     {
-        // Take the first character of the current rail
-        plaintext += rail[row][0];
-
-        // Remove the used character
-        rail[row] = rail[row].substr(1);
-        row += direction;
-
+        plaintext += ciphertext[curPos[row]++];
+        row += dir;
         if (row == 0 || row == key - 1)
-        {
-            direction *= -1;
-        }
+            dir *= -1;
     }
 
     return plaintext;
@@ -201,7 +198,8 @@ string generateKey(string plaintext, string key)
 // Function to encrypt the plaintext using Vigenère Cipher
 string vigencrypt(string plaintext, string key)
 {
-    string ciphertext = "";
+    string ciphertext;
+    ciphertext.reserve(plaintext.size());
     key = generateKey(plaintext, key);
 
     for (size_t i = 0; i < plaintext.length(); i++)
@@ -224,7 +222,8 @@ string vigencrypt(string plaintext, string key)
 // Function to decrypt the ciphertext using Vigenère Cipher
 string vigdecrypt(string ciphertext, string key)
 {
-    string plaintext = "";
+    string plaintext;
+    plaintext.reserve(ciphertext.size());
     key = generateKey(ciphertext, key);
 
     for (size_t i = 0; i < ciphertext.length(); i++)
@@ -247,7 +246,8 @@ string vigdecrypt(string ciphertext, string key)
 // Function to encrypt the plaintext using Caesar Cipher
 string caesar_encrypt(string text, int shift)
 {
-    string result = "";
+    string result;
+    result.reserve(text.size());
     for (char ch : text)
     {
         if (isalpha(ch))
@@ -321,18 +321,15 @@ int modularExponentiation(int base, int exp, int mod)
 // Function to generate a random key of the same length as the plaintext
 string generateRandomKey(const string &plaintext)
 {
-    string key = "";
+    string key;
+    key.reserve(plaintext.size());
 
-    // Random number generator
-    mt19937 gen(static_cast<unsigned long>(time(nullptr)));
-
-    // Generate random values in the byte range (0-255)
+    auto &gen = globalRng();
     uniform_int_distribution<int> dist(0, 255);
 
     for (size_t i = 0; i < plaintext.length(); ++i)
     {
-        // Random number Generator
-        key += static_cast<char>(dist(gen));
+        key.push_back(static_cast<char>(dist(gen)));
     }
 
     return key;
@@ -341,12 +338,11 @@ string generateRandomKey(const string &plaintext)
 // Function to encrypt the plaintext using the OTP
 string encrypt(const string &plaintext, const string &key)
 {
-    string ciphertext = "";
-
+    string ciphertext;
+    ciphertext.resize(plaintext.size());
     for (size_t i = 0; i < plaintext.length(); ++i)
     {
-        // XOR each character of the plaintext with the key
-        ciphertext += plaintext[i] ^ key[i];
+        ciphertext[i] = plaintext[i] ^ key[i];
     }
     return ciphertext;
 }
@@ -354,12 +350,11 @@ string encrypt(const string &plaintext, const string &key)
 // Function to decrypt the ciphertext using the OTP
 string decrypt(const string &ciphertext, const string &key)
 {
-    string decryptedText = "";
-
+    string decryptedText;
+    decryptedText.resize(ciphertext.size());
     for (size_t i = 0; i < ciphertext.length(); ++i)
     {
-        // XOR again to get the original plaintext
-        decryptedText += ciphertext[i] ^ key[i];
+        decryptedText[i] = ciphertext[i] ^ key[i];
     }
 
     return decryptedText;
@@ -671,15 +666,15 @@ int main()
 
                 // Encrypt the plaintext using the generated key
                 string ciphertext = encrypt(plaintext, key);
-                cout << "Encrypted ciphertext: ";
-
-                // Output ciphertext as raw bytes (for demonstration purposes)
-                for (char c : ciphertext)
+                const char *hexDigits = "0123456789abcdef";
+                string hexOutput;
+                hexOutput.reserve(ciphertext.size() * 2);
+                for (unsigned char c : ciphertext)
                 {
-                    // Print as hexadecimal
-                    cout << hex << (int)(unsigned char)c;
+                    hexOutput.push_back(hexDigits[c >> 4]);
+                    hexOutput.push_back(hexDigits[c & 0x0F]);
                 }
-                cout << dec << std::endl; // Back to decimal format
+                cout << "Encrypted ciphertext: " << hexOutput << std::endl;
 
                 // Decrypt the ciphertext using the same key
                 string decryptedText = decrypt(ciphertext, key);
